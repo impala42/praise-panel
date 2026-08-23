@@ -278,6 +278,8 @@ button {
 .icon-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+.panel__header-actions { display: flex; align-items: center; gap: 6px; }
+
 .search {
   margin: 0 16px 12px;
   position: relative;
@@ -386,6 +388,12 @@ button {
   white-space: nowrap;
 }
 
+.slides-header__right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .slides-scroll {
   flex: 1;
   overflow-y: auto;
@@ -468,6 +476,66 @@ button {
   -webkit-box-orient: vertical;
 }
 .slide-card.is-live .slide-card__text { color: var(--text); }
+
+/* --- mode édition des diapositives ---------------------------------------- */
+
+.slide-card--edit {
+  cursor: default;
+}
+.slide-card--edit:hover { transform: none; border-color: var(--line); }
+.slide-card--edit.is-live:hover { border-color: var(--amber); }
+
+.slide-card__delete {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: color .15s ease, background .15s ease;
+}
+.slide-card__delete:hover { color: var(--danger); background: rgba(232, 96, 76, 0.12); }
+
+.slide-card__textarea {
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  min-height: 84px;
+  background: var(--panel-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 8px 9px;
+  outline: none;
+  transition: border-color .15s ease;
+}
+.slide-card__textarea:focus { border-color: var(--teal); }
+
+.slide-card--add {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-style: dashed;
+  color: var(--text-faint);
+  background: transparent;
+  min-height: 128px;
+}
+.slide-card--add:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: var(--teal-dim);
+  transform: none;
+}
+.slide-card--add__plus {
+  font-family: var(--mono);
+  font-size: 20px;
+  line-height: 1;
+}
 
 .empty-state {
   height: 100%;

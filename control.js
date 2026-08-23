@@ -10,15 +10,18 @@
   let liveSongIndex = -1;       // chant actuellement projeté
   let liveSlideIndex = -1;      // diapositive actuellement projetée (-1 = noir)
   let filterText = "";
+  let editMode = false;         // édition des paroles du chant ouvert
+  const saveTimers = {};        // debounce des modifications de texte, par index de diapo
 
   const channel = createChannel();
 
   const els = {
-    songCount:        document.getElementById("songCount"),
-    songList:         document.getElementById("songList"),
-    songSearch:       document.getElementById("songSearch"),
+    songCount:         document.getElementById("songCount"),
+    songList:          document.getElementById("songList"),
+    songSearch:        document.getElementById("songSearch"),
     addSongBtn:        document.getElementById("addSongBtn"),
-    slidesArea:       document.getElementById("slidesArea"),
+    reverseOrderBtn:   document.getElementById("reverseOrderBtn"),
+    slidesArea:        document.getElementById("slidesArea"),
     openProjectionBtn: document.getElementById("openProjectionBtn"),
     blackoutBtn:       document.getElementById("blackoutBtn"),
     statusPill:        document.getElementById("statusPill"),
@@ -65,8 +68,24 @@
 
   function selectSong(index) {
     selectedSongIndex = index;
+    editMode = false;
     renderSongList();
     renderSlides();
+  }
+
+  /** Inverse l'ordre des chants dans la liste de gauche, en conservant
+   *  la sélection et l'état projeté (qui restent liés au même chant). */
+  function reverseSongOrder() {
+    const selectedSong = songs[selectedSongIndex] || null;
+    const liveSong = songs[liveSongIndex] || null;
+
+    songs = songs.slice().reverse();
+    saveSongs(songs);
+
+    selectedSongIndex = selectedSong ? songs.indexOf(selectedSong) : -1;
+    liveSongIndex = liveSong ? songs.indexOf(liveSong) : -1;
+
+    renderSongList();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -88,6 +107,18 @@
 
     const cards = song.paroles.map((text, i) => {
       const isLive = selectedSongIndex === liveSongIndex && i === liveSlideIndex;
+
+      if (editMode) {
+        return `
+          <div class="slide-card slide-card--edit${isLive ? " is-live" : ""}" data-slide="${i}">
+            <span class="slide-card__top">
+              <span class="slide-card__num">DIAPO ${String(i + 1).padStart(2, "0")}</span>
+              <button class="slide-card__delete" data-delete="${i}" title="Supprimer cette diapositive">×</button>
+            </span>
+            <textarea class="slide-card__textarea" data-edit="${i}" rows="4">${escapeHtml(text)}</textarea>
+          </div>`;
+      }
+
       return `
         <button class="slide-card${isLive ? " is-live" : ""}" data-slide="${i}">
           <span class="slide-card__top">
@@ -98,21 +129,117 @@
         </button>`;
     }).join("");
 
+    const addCard = editMode
+      ? `<button class="slide-card slide-card--add" id="addSlideBtn">
+           <span class="slide-card--add__plus">+</span>
+           <span>Ajouter une diapositive</span>
+         </button>`
+      : "";
+
     els.slidesArea.innerHTML = `
       <div class="slides-header">
         <span class="slides-header__title">${escapeHtml(song.titre)}</span>
-        <span class="slides-header__count">${song.paroles.length} diapositive${song.paroles.length > 1 ? "s" : ""}</span>
+        <span class="slides-header__right">
+          <span class="slides-header__count">${song.paroles.length} diapositive${song.paroles.length > 1 ? "s" : ""}</span>
+          <button class="btn" id="editModeBtn">${editMode ? "Terminer" : "Modifier"}</button>
+        </span>
       </div>
       <div class="slides-scroll">
-        <div class="slides-grid">${cards}</div>
+        <div class="slides-grid">${cards}${addCard}</div>
       </div>
     `;
 
-    els.slidesArea.querySelectorAll(".slide-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        projectSlide(selectedSongIndex, Number(card.dataset.slide));
-      });
+    document.getElementById("editModeBtn").addEventListener("click", () => {
+      editMode = !editMode;
+      renderSlides();
     });
+
+    if (editMode) {
+      const addSlideBtn = document.getElementById("addSlideBtn");
+      if (addSlideBtn) addSlideBtn.addEventListener("click", addSlide);
+
+      els.slidesArea.querySelectorAll(".slide-card__textarea").forEach((ta) => {
+        autoGrow(ta);
+        ta.addEventListener("input", () => {
+          autoGrow(ta);
+          scheduleTextSave(Number(ta.dataset.edit), ta.value);
+        });
+      });
+
+      els.slidesArea.querySelectorAll(".slide-card__delete").forEach((btn) => {
+        btn.addEventListener("click", () => deleteSlide(Number(btn.dataset.delete)));
+      });
+    } else {
+      els.slidesArea.querySelectorAll(".slide-card:not(.slide-card--add)").forEach((card) => {
+        card.addEventListener("click", () => {
+          projectSlide(selectedSongIndex, Number(card.dataset.slide));
+        });
+      });
+    }
+  }
+
+  function autoGrow(textarea) {
+    textarea.style.height = "auto";
+    textarea.style.height = textarea.scrollHeight + "px";
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Édition des paroles                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  function scheduleTextSave(slideIndex, value) {
+    window.clearTimeout(saveTimers[slideIndex]);
+    saveTimers[slideIndex] = window.setTimeout(() => {
+      const song = songs[selectedSongIndex];
+      if (!song) return;
+      song.paroles[slideIndex] = value;
+      saveSongs(songs);
+
+      // Le texte modifié est déjà à l'écran : on le met à jour sans coupure.
+      if (selectedSongIndex === liveSongIndex && slideIndex === liveSlideIndex) {
+        const state = {
+          titre: song.titre,
+          slideIndex,
+          slideCount: song.paroles.length,
+          text: value,
+        };
+        saveCurrent(state);
+        channel.postMessage({ type: "show", state, silent: true });
+        updateLivePreview(state);
+      }
+    }, 400);
+  }
+
+  function addSlide() {
+    const song = songs[selectedSongIndex];
+    if (!song) return;
+    song.paroles.push("");
+    saveSongs(songs);
+    renderSlides();
+
+    const grid = els.slidesArea.querySelector(".slides-grid");
+    const newTextarea = grid.querySelector(`[data-edit="${song.paroles.length - 1}"]`);
+    if (newTextarea) {
+      newTextarea.focus();
+      newTextarea.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  function deleteSlide(slideIndex) {
+    const song = songs[selectedSongIndex];
+    if (!song || song.paroles.length <= 1) return; // un chant garde toujours au moins une diapositive
+
+    const wasLive = selectedSongIndex === liveSongIndex && slideIndex === liveSlideIndex;
+    song.paroles.splice(slideIndex, 1);
+    saveSongs(songs);
+
+    if (wasLive) {
+      blackout();
+    } else if (selectedSongIndex === liveSongIndex && liveSlideIndex > slideIndex) {
+      liveSlideIndex -= 1; // les diapositives suivantes ont glissé d'un cran
+    }
+
+    renderSlides();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -121,7 +248,7 @@
 
   function projectSlide(songIndex, slideIndex) {
     const song = songs[songIndex];
-    if (!song || !song.paroles[slideIndex]) return;
+    if (!song || song.paroles[slideIndex] === undefined) return;
 
     liveSongIndex = songIndex;
     liveSlideIndex = slideIndex;
@@ -179,16 +306,18 @@
   });
 
   els.blackoutBtn.addEventListener("click", blackout);
+  els.reverseOrderBtn.addEventListener("click", reverseSongOrder);
 
   els.openProjectionBtn.addEventListener("click", () => {
     window.open("projection.html", "regie-chants-projection", "width=1280,height=720");
   });
 
   // Navigation clavier : ↑/↓ pour parcourir les diapositives du chant ouvert,
-  // Entrée pour projeter, Échap pour couper. Ignoré si on tape dans un champ.
+  // Échap pour couper. Ignoré si on tape dans un champ ou une zone de texte.
   document.addEventListener("keydown", (e) => {
-    if (e.target === els.songSearch) return;
-    if (selectedSongIndex === -1) return;
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (selectedSongIndex === -1 || editMode) return;
     const song = songs[selectedSongIndex];
     if (!song) return;
 

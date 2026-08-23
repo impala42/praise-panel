@@ -48,5 +48,5 @@ async function askLLM(prompt) {
 let lien_chant = "https://eecpworship.fr/songs/04fb215e73d";
 let paroles_brut = await getPageContent(lien_chant);
 let paroles_txt = await askLLM("Renvoie un json et seulement un json, sans aucun commentaire. Il contiendra la clé \"strophes\" associée à une liste où chaque élément est une chaine de caractère qui correspond à une strophe/refrain/pont du chant présent dans le texte suivant : \n \n "+paroles_brut);
-let paroles = JSON.parse(paroles_txt)
+let paroles = JSON.parse(paroles_txt.replace(/^```json\s*/, '').replace(/\s*```$/, '')).strophes
 console.log(paroles)

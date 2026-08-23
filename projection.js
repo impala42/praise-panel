@@ -14,16 +14,31 @@
 
   const FADE_MS = 350;
   let pendingState = null;
+  let currentKey = null; // "titre::slideIndex" actuellement affiché, pour les mises à jour silencieuses
 
   /* ---------------------------------------------------------------------- */
   /* Affichage                                                              */
   /* ---------------------------------------------------------------------- */
 
-  function show(state) {
+  function show(state, silent) {
     if (!state) {
+      currentKey = null;
       hideAll();
       return;
     }
+
+    const key = state.titre + "::" + state.slideIndex;
+
+    // Correction de texte sur la diapositive déjà à l'écran : on remplace
+    // le texte sans coupure, plutôt que de refaire un fondu complet.
+    if (silent && key === currentKey) {
+      lyricsEl.textContent = state.text;
+      metaEl.textContent = `${state.titre} · ${state.slideIndex + 1}/${state.slideCount}`;
+      fitText();
+      return;
+    }
+
+    currentKey = key;
 
     // Fondu enchaîné : on masque, on remplace le texte, on réaffiche.
     lyricsEl.classList.remove("is-visible");
@@ -76,8 +91,8 @@
   channel.onmessage = (event) => {
     const msg = event.data;
     if (!msg) return;
-    if (msg.type === "show") show(msg.state);
-    else if (msg.type === "blackout") hideAll();
+    if (msg.type === "show") show(msg.state, !!msg.silent);
+    else if (msg.type === "blackout") { currentKey = null; hideAll(); }
   };
 
   // Filet de sécurité pour les environnements sans BroadcastChannel :
@@ -90,6 +105,7 @@
   // État initial (onglet de projection ouvert après coup, ou rafraîchi).
   const initial = loadCurrent();
   if (initial) {
+    currentKey = initial.titre + "::" + initial.slideIndex;
     lyricsEl.textContent = initial.text;
     metaEl.textContent = `${initial.titre} · ${initial.slideIndex + 1}/${initial.slideCount}`;
     stage.classList.remove("is-empty");
