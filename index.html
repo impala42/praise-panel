@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Régie Chants — Technicien</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="console">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark"></span>
+      <span class="brand__name">Régie · Chants</span>
+      <span class="brand__sub">poste technicien</span>
+    </div>
+
+    <div class="topbar__right">
+      <div class="live-preview" id="livePreview">
+        <div class="live-preview__screen"><span id="livePreviewText"></span></div>
+        <div class="live-preview__meta">
+          <span class="status-pill" id="statusPill">à l'arrêt</span>
+          <span class="live-preview__title" id="livePreviewTitle">—</span>
+        </div>
+      </div>
+      <button class="btn btn--danger" id="blackoutBtn" title="Couper la projection (écran noir)">Noir</button>
+      <button class="btn btn--primary" id="openProjectionBtn">Ouvrir la projection ↗</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <aside class="panel panel--songs">
+      <div class="panel__header">
+        <div class="panel__header-left">
+          <span class="eyebrow">Chants</span>
+          <span class="count-badge" id="songCount">0</span>
+        </div>
+        <button class="icon-btn" id="addSongBtn" title="Ajouter un chant — bientôt disponible" disabled>+</button>
+      </div>
+
+      <div class="search">
+        <input type="text" id="songSearch" placeholder="Filtrer les chants…" autocomplete="off">
+      </div>
+
+      <nav class="song-list" id="songList"></nav>
+    </aside>
+
+    <main class="panel panel--slides">
+      <div id="slidesArea"></div>
+    </main>
+
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="control.js"></script>
+</body>
+</html>
