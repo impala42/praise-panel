@@ -86,6 +86,35 @@
     return div.textContent.replace(/\s+/g, " ").trim();
   }
 
+  /** Découpe une strophe de plus de `maxWords` mots en plusieurs diapositives,
+   *  en coupant de préférence après un signe de ponctuation (. ! ? ; : , …)
+   *  plutôt qu'au milieu d'une phrase. À défaut de ponctuation dans la
+   *  fenêtre de mots autorisée, coupe simplement au mot le plus proche. */
+  function splitLongStrophe(text, maxWords) {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= maxWords) return [text.trim()];
+
+    const endsWithPunctuation = /[.!?;:,…]["'”’)\]]?$/;
+    const slides = [];
+    let start = 0;
+
+    while (words.length - start > maxWords) {
+      const windowEnd = start + maxWords;
+      let breakAt = -1;
+      for (let i = windowEnd - 1; i > start; i--) {
+        if (endsWithPunctuation.test(words[i])) {
+          breakAt = i + 1; // on coupe juste après ce mot
+          break;
+        }
+      }
+      if (breakAt === -1) breakAt = windowEnd; // aucune ponctuation trouvée : coupe brute
+      slides.push(words.slice(start, breakAt).join(" "));
+      start = breakAt;
+    }
+    if (start < words.length) slides.push(words.slice(start).join(" "));
+    return slides;
+  }
+
   /* ---------------------------------------------------------------------- */
   /* Onglet « passage biblique » — API bolls.life (sans clé)                */
   /* ---------------------------------------------------------------------- */
@@ -221,7 +250,11 @@
         throw new Error("Aucune parole détectée sur cette page.");
       }
 
-      window.RegieChantsControl.addSong({ titre, paroles: strophes });
+      // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives,
+      // en coupant sur la ponctuation quand c'est possible.
+      const paroles = strophes.flatMap((s) => splitStropheIntoSlides(s, 20));
+
+      window.RegieChantsControl.addSong({ titre, paroles });
       setStatus(els.urlStatus, "Chant ajouté.", "success");
       closeModal();
       els.urlForm.reset();

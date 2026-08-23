@@ -146,6 +146,55 @@ const BIBLE_BOOKS = [
   { id: 66, name: "Apocalypse",             chapters: 22 },
 ];
 
+function countWords(str) {
+  return str.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Découpe une strophe trop longue en plusieurs diapositives, en coupant
+ *  de préférence sur la ponctuation (fin de phrase, virgule, retour à la
+ *  ligne) plutôt qu'au milieu d'une proposition. Utilisé à l'import depuis
+ *  une URL, où l'IA peut renvoyer de longs blocs de texte en une strophe. */
+function splitStropheIntoSlides(text, maxWords = 20) {
+  const trimmed = text.trim();
+  if (!trimmed || countWords(trimmed) <= maxWords) return [trimmed];
+
+  // 1) Découpe en clauses en s'appuyant sur la ponctuation et les retours à la ligne.
+  const clauses = (trimmed.match(/[^.!?;:,\n]+[.!?;:,\n]*/g) || [trimmed])
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  // 2) Les clauses trop longues (peu ou pas de ponctuation) sont redécoupées mot à mot.
+  const pieces = [];
+  clauses.forEach((clause) => {
+    const words = clause.split(/\s+/).filter(Boolean);
+    if (words.length <= maxWords) {
+      pieces.push(clause);
+    } else {
+      for (let i = 0; i < words.length; i += maxWords) {
+        pieces.push(words.slice(i, i + maxWords).join(" "));
+      }
+    }
+  });
+
+  // 3) Regroupe les morceaux successifs tant que la limite n'est pas dépassée.
+  const slides = [];
+  let current = "";
+  let currentWords = 0;
+  pieces.forEach((piece) => {
+    const pieceWords = countWords(piece);
+    if (currentWords > 0 && currentWords + pieceWords > maxWords) {
+      slides.push(current.trim());
+      current = "";
+      currentWords = 0;
+    }
+    current += (current ? " " : "") + piece;
+    currentWords += pieceWords;
+  });
+  if (current) slides.push(current.trim());
+
+  return slides;
+}
+
 /** Petit utilitaire autour de BroadcastChannel pour la synchro temps réel
  *  entre l'onglet technicien et l'onglet de projection. Retombe sur un
  *  simple no-op si l'API n'est pas disponible. */
