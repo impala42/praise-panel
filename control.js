@@ -316,7 +316,7 @@
   // Échap pour couper. Ignoré si on tape dans un champ ou une zone de texte.
   document.addEventListener("keydown", (e) => {
     const tag = e.target.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     if (selectedSongIndex === -1 || editMode) return;
     const song = songs[selectedSongIndex];
     if (!song) return;
@@ -353,4 +353,18 @@
 
   renderSongList();
   renderSlides();
+
+  /* ---------------------------------------------------------------------- */
+  /* Pont vers la fenêtre d'ajout de chant (addsong.js)                     */
+  /* ---------------------------------------------------------------------- */
+
+  window.RegieChantsControl = {
+    /** Ajoute un chant déjà construit ({titre, paroles}) et l'ouvre. */
+    addSong(song) {
+      songs.push(song);
+      saveSongs(songs);
+      renderSongList();
+      selectSong(songs.length - 1);
+    },
+  };
 })();

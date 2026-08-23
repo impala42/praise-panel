@@ -40,7 +40,7 @@
         </div>
         <span class="panel__header-actions">
           <button class="icon-btn" id="reverseOrderBtn" title="Inverser l'ordre des chants">⇅</button>
-          <button class="icon-btn" id="addSongBtn" title="Ajouter un chant — bientôt disponible" disabled>+</button>
+          <button class="icon-btn" id="addSongBtn" title="Ajouter un chant">+</button>
         </span>
       </div>
 
@@ -58,7 +58,74 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="addSongOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addSongTitle">
+    <div class="modal__header">
+      <h2 id="addSongTitle" class="modal__title">Ajouter un chant</h2>
+      <button class="icon-btn" id="addSongClose" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal__tabs">
+      <button class="modal__tab is-active" type="button" data-tab="url">Depuis une URL</button>
+      <button class="modal__tab" type="button" data-tab="bible">Depuis un passage biblique</button>
+    </div>
+
+    <form class="modal__panel" id="urlForm" data-panel="url">
+      <label class="field">
+        <span class="field__label">Titre du chant</span>
+        <input type="text" id="urlTitleInput" required placeholder="Ex. Que ta gloire remplisse la terre" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="field__label">URL de la page du chant</span>
+        <input type="url" id="urlLinkInput" required placeholder="https://…" autocomplete="off">
+      </label>
+      <p class="modal__status" id="urlStatus"></p>
+      <div class="modal__actions">
+        <button type="submit" class="btn btn--primary" id="urlSubmitBtn">Récupérer les paroles</button>
+      </div>
+    </form>
+
+    <form class="modal__panel" id="bibleForm" data-panel="bible" hidden>
+      <div class="field-row">
+        <label class="field">
+          <span class="field__label">Livre</span>
+          <select id="bibleBookSelect"></select>
+        </label>
+        <label class="field field--narrow">
+          <span class="field__label">Chapitre</span>
+          <input type="number" id="bibleChapterInput" min="1" value="1" required>
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field field--narrow">
+          <span class="field__label">Verset début</span>
+          <input type="number" id="bibleVerseStartInput" min="1" value="1" required>
+        </label>
+        <label class="field field--narrow">
+          <span class="field__label">Verset fin</span>
+          <input type="number" id="bibleVerseEndInput" min="1" value="1" required>
+        </label>
+        <label class="field">
+          <span class="field__label">Traduction</span>
+          <select id="bibleTranslationSelect">
+            <option value="FRLSG">Segond 1910</option>
+            <option value="NBS">Nouvelle Bible Segond</option>
+            <option value="BDS">Bible du Semeur</option>
+            <option value="FRPDV17">Parole de Vie</option>
+            <option value="FRDBY">Bible de Darby</option>
+          </select>
+        </label>
+      </div>
+      <p class="modal__status" id="bibleStatus"></p>
+      <div class="modal__actions">
+        <button type="submit" class="btn btn--primary" id="bibleSubmitBtn">Récupérer le passage</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="data.js"></script>
 <script src="control.js"></script>
+<script src="addsong.js"></script>
 </body>
 </html>
