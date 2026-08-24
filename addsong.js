@@ -19,6 +19,10 @@
     urlStatus:    document.getElementById("urlStatus"),
     urlSubmitBtn: document.getElementById("urlSubmitBtn"),
 
+    jemafSearch:  document.getElementById("jemafSearchInput"),
+    jemafStatus:  document.getElementById("jemafStatus"),
+    jemafResults: document.getElementById("jemafResults"),
+
     bibleForm:        document.getElementById("bibleForm"),
     bibleBookSelect:  document.getElementById("bibleBookSelect"),
     bibleChapter:     document.getElementById("bibleChapterInput"),
@@ -42,6 +46,9 @@
     els.overlay.hidden = true;
     resetStatus(els.urlStatus);
     resetStatus(els.bibleStatus);
+    resetStatus(els.jemafStatus);
+    els.jemafSearch.value = "";
+    els.jemafResults.innerHTML = "";
   }
 
   els.openBtn.addEventListener("click", openModal);
@@ -63,10 +70,13 @@
     true
   );
 
+  const tabFocusTargets = { url: els.urlTitle, jemaf: els.jemafSearch, bible: els.bibleBookSelect };
   els.tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       els.tabs.forEach((t) => t.classList.toggle("is-active", t === tab));
       els.panels.forEach((p) => (p.hidden = p.dataset.panel !== tab.dataset.tab));
+      const target = tabFocusTargets[tab.dataset.tab];
+      if (target) target.focus();
     });
   });
 
@@ -84,6 +94,12 @@
     const div = document.createElement("div");
     div.innerHTML = html;
     return div.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   /* ---------------------------------------------------------------------- */
@@ -254,6 +270,42 @@
     return data.choices[0].message.content;
   }
 
+  /** Récupère une page, en extrait les strophes par IA, les découpe si besoin
+   *  et ajoute le chant. Met à jour `statusEl` au fil des étapes. Lève une
+   *  erreur (avec un message adapté à l'utilisateur) en cas d'échec. */
+  async function importSongFromUrl(titre, lien, statusEl) {
+    setStatus(statusEl, "Lecture de la page…", "loading");
+    const paroles_brut = await getPageContent(lien);
+
+    setStatus(statusEl, "Extraction des paroles…", "loading");
+    const prompt =
+      'Renvoie un json et seulement un json, sans aucun commentaire. ' +
+      'Il contiendra la clé "strophes" associée à une liste où chaque élément ' +
+      'est une chaine de caractère qui correspond à une strophe/refrain/pont ' +
+      'du chant présent dans le texte suivant : \n\n' + paroles_brut;
+    const paroles_txt = await askLLM(prompt);
+
+    const cleaned = paroles_txt.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseErr) {
+      throw new Error("Réponse inattendue de l'assistant IA.");
+    }
+
+    const strophes = parsed && parsed.strophes;
+    if (!Array.isArray(strophes) || strophes.length === 0) {
+      throw new Error("Aucune parole détectée sur cette page.");
+    }
+
+    // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives :
+    // en priorité sur les retours à la ligne, puis sur la ponctuation, puis par mots.
+    const paroles = strophes.flatMap((s) => splitStropheIntoSlides(String(s), MAX_WORDS_PER_SLIDE));
+
+    window.RegieChantsControl.addSong({ titre, paroles });
+    setStatus(statusEl, "Chant ajouté.", "success");
+  }
+
   els.urlForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -265,38 +317,8 @@
     }
 
     els.urlSubmitBtn.disabled = true;
-
     try {
-      setStatus(els.urlStatus, "Lecture de la page…", "loading");
-      const paroles_brut = await getPageContent(lien);
-
-      setStatus(els.urlStatus, "Extraction des paroles…", "loading");
-      const prompt =
-        'Renvoie un json et seulement un json, sans aucun commentaire. ' +
-        'Il contiendra la clé "strophes" associée à une liste où chaque élément ' +
-        'est une chaine de caractère qui correspond à une strophe/refrain/pont ' +
-        'du chant présent dans le texte suivant : \n\n' + paroles_brut;
-      const paroles_txt = await askLLM(prompt);
-
-      const cleaned = paroles_txt.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
-      let parsed;
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch (parseErr) {
-        throw new Error("Réponse inattendue de l'assistant IA.");
-      }
-
-      const strophes = parsed && parsed.strophes;
-      if (!Array.isArray(strophes) || strophes.length === 0) {
-        throw new Error("Aucune parole détectée sur cette page.");
-      }
-
-      // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives :
-      // en priorité sur les retours à la ligne, puis sur la ponctuation, puis par mots.
-      const paroles = strophes.flatMap((s) => splitStropheIntoSlides(String(s), MAX_WORDS_PER_SLIDE));
-
-      window.RegieChantsControl.addSong({ titre, paroles });
-      setStatus(els.urlStatus, "Chant ajouté.", "success");
+      await importSongFromUrl(titre, lien, els.urlStatus);
       closeModal();
       els.urlForm.reset();
     } catch (err) {
@@ -306,4 +328,79 @@
       els.urlSubmitBtn.disabled = false;
     }
   });
+
+  /* ---------------------------------------------------------------------- */
+  /* Onglet « Depuis JEMAF » — recherche dans l'index JEMAF / ATG           */
+  /* ---------------------------------------------------------------------- */
+
+  const JEMAF_RESULTS_LIMIT = 50;
+  let jemafBusy = false;
+  let jemafSearchTimer = null;
+
+  function normalizeSearch(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  function renderJemafResults() {
+    const query = normalizeSearch(els.jemafSearch.value.trim());
+
+    if (!query) {
+      els.jemafResults.innerHTML = "";
+      setStatus(els.jemafStatus, `${JEMAF_INDEX.length} chants disponibles — tapez pour rechercher.`, null);
+      return;
+    }
+
+    const matches = [];
+    for (let i = 0; i < JEMAF_INDEX.length && matches.length < 500; i++) {
+      if (normalizeSearch(JEMAF_INDEX[i].titre).includes(query)) matches.push(i);
+    }
+
+    if (matches.length === 0) {
+      els.jemafResults.innerHTML = "";
+      setStatus(els.jemafStatus, "Aucun chant trouvé.", null);
+      return;
+    }
+
+    setStatus(
+      els.jemafStatus,
+      matches.length > JEMAF_RESULTS_LIMIT
+        ? `${matches.length} résultats — affinez la recherche pour voir les autres.`
+        : `${matches.length} résultat${matches.length > 1 ? "s" : ""}.`,
+      null
+    );
+
+    els.jemafResults.innerHTML = matches
+      .slice(0, JEMAF_RESULTS_LIMIT)
+      .map((idx) => `<button class="jemaf-result" type="button" data-index="${idx}">${escapeHtml(JEMAF_INDEX[idx].titre)}</button>`)
+      .join("");
+
+    els.jemafResults.querySelectorAll(".jemaf-result").forEach((btn) => {
+      btn.addEventListener("click", () => selectJemafSong(Number(btn.dataset.index)));
+    });
+  }
+
+  els.jemafSearch.addEventListener("input", () => {
+    window.clearTimeout(jemafSearchTimer);
+    jemafSearchTimer = window.setTimeout(renderJemafResults, 120);
+  });
+  renderJemafResults();
+
+  async function selectJemafSong(index) {
+    if (jemafBusy) return;
+    const entry = JEMAF_INDEX[index];
+    if (!entry) return;
+
+    jemafBusy = true;
+    els.jemafResults.classList.add("jemaf-results--busy");
+    try {
+      await importSongFromUrl(entry.titre, entry.lien, els.jemafStatus);
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      setStatus(els.jemafStatus, "Échec de la récupération. " + err.message, "error");
+    } finally {
+      jemafBusy = false;
+      els.jemafResults.classList.remove("jemaf-results--busy");
+    }
+  }
 })();

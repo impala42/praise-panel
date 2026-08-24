@@ -66,6 +66,7 @@
 
     <div class="modal__tabs">
       <button class="modal__tab is-active" type="button" data-tab="url">Depuis une URL</button>
+      <button class="modal__tab" type="button" data-tab="jemaf">Depuis JEMAF</button>
       <button class="modal__tab" type="button" data-tab="bible">Depuis un passage biblique</button>
     </div>
 
@@ -83,6 +84,15 @@
         <button type="submit" class="btn btn--primary" id="urlSubmitBtn">Récupérer les paroles</button>
       </div>
     </form>
+
+    <div class="modal__panel" id="jemafPanel" data-panel="jemaf" hidden>
+      <label class="field">
+        <span class="field__label">Rechercher un chant JEMAF / ATG</span>
+        <input type="text" id="jemafSearchInput" placeholder="Titre du chant…" autocomplete="off">
+      </label>
+      <p class="modal__status" id="jemafStatus"></p>
+      <div class="jemaf-results" id="jemafResults"></div>
+    </div>
 
     <form class="modal__panel" id="bibleForm" data-panel="bible" hidden>
       <div class="field-row">
@@ -124,6 +134,7 @@
 </div>
 
 <script src="data.js"></script>
+<script src="jemaf-index.js"></script>
 <script src="control.js"></script>
 <script src="addsong.js"></script>
 </body>

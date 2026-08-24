@@ -798,6 +798,32 @@ button {
 .modal__status--error { color: var(--danger); }
 .modal__status--success { color: var(--teal); }
 
+.jemaf-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+.jemaf-results:empty { border-color: transparent; padding: 0; }
+.jemaf-results--busy { opacity: 0.5; pointer-events: none; }
+
+.jemaf-result {
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 9px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  transition: background .12s ease, color .12s ease;
+}
+.jemaf-result:hover { background: var(--teal-dim); color: var(--teal); }
+
 .modal__actions {
   display: flex;
   justify-content: flex-end;

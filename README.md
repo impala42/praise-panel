@@ -1,5 +1,4 @@
 # A faire
-- chants à partir de jemaf
 - police projection
 
 # A faire + tard 
