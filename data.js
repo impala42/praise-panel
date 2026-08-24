@@ -7,24 +7,21 @@ const STORAGE_SONGS_KEY   = "regieChants.songs.v1";
 const STORAGE_CURRENT_KEY = "regieChants.current.v1";
 const CHANNEL_NAME        = "regie-chants-channel";
 
-/* Jeu de démonstration — deux chants du domaine public, à remplacer par les
-   vôtres. Chaque "parole" du tableau correspond à une diapositive projetée. */
+/* Chants par défaut au premier lancement (liste vide en localStorage).
+ * "Je suis né pour te louer" est laissé avec un texte d'attente : ses vraies
+ * paroles sont récupérées automatiquement depuis JEMAF au premier chargement
+ * (voir addsong.js), plutôt que d'être recopiées ici en dur. */
+const JEMAF_DEFAULT_SONG_TITLE = "Je suis né pour te louer";
+const JEMAF_PLACEHOLDER_TEXT   = "Récupération des paroles depuis JEMAF…";
+
 const SEED_SONGS = [
   {
-    titre: "Amazing Grace",
-    paroles: [
-      "Amazing grace! How sweet the sound\nThat saved a wretch like me!\nI once was lost, but now am found;\nWas blind, but now I see.",
-      "'Twas grace that taught my heart to fear,\nAnd grace my fears relieved;\nHow precious did that grace appear\nThe hour I first believed.",
-      "Through many dangers, toils, and snares,\nI have already come;\n'Tis grace hath brought me safe thus far,\nAnd grace will lead me home."
-    ]
+    titre: JEMAF_DEFAULT_SONG_TITLE,
+    paroles: [JEMAF_PLACEHOLDER_TEXT]
   },
   {
-    titre: "Il est né le divin enfant",
-    paroles: [
-      "Il est né le divin enfant,\nJouez hautbois, résonnez musettes.\nIl est né le divin enfant,\nChantons tous son avènement.",
-      "Depuis plus de quatre mille ans,\nNous le promettaient les prophètes,\nDepuis plus de quatre mille ans,\nNous attendions cet heureux temps.",
-      "Une étable est son logement,\nUn peu de paille est sa couchette,\nUne étable est son logement\nPour un Dieu quel abaissement !"
-    ]
+    titre: "Psaumes 150:6",
+    paroles: ["Que tout ce qui respire loue l'Éternel !\nLouez l'Éternel !"]
   }
 ];
 

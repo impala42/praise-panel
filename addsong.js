@@ -85,6 +85,7 @@
   /* ---------------------------------------------------------------------- */
 
   function setStatus(el, text, kind) {
+    if (!el) return;
     el.textContent = text;
     el.className = "modal__status" + (kind ? " modal__status--" + kind : "");
   }
@@ -270,10 +271,11 @@
     return data.choices[0].message.content;
   }
 
-  /** Récupère une page, en extrait les strophes par IA, les découpe si besoin
-   *  et ajoute le chant. Met à jour `statusEl` au fil des étapes. Lève une
-   *  erreur (avec un message adapté à l'utilisateur) en cas d'échec. */
-  async function importSongFromUrl(titre, lien, statusEl) {
+  /** Récupère une page et en extrait les strophes par IA, découpées si besoin.
+   *  Met à jour `statusEl` (optionnel) au fil des étapes. Lève une erreur
+   *  (avec un message adapté à l'utilisateur) en cas d'échec. Ne modifie pas
+   *  la liste des chants — voir importSongFromUrl pour l'ajout complet. */
+  async function fetchParolesFromUrl(lien, statusEl) {
     setStatus(statusEl, "Lecture de la page…", "loading");
     const paroles_brut = await getPageContent(lien);
 
@@ -300,8 +302,12 @@
 
     // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives :
     // en priorité sur les retours à la ligne, puis sur la ponctuation, puis par mots.
-    const paroles = strophes.flatMap((s) => splitStropheIntoSlides(String(s), MAX_WORDS_PER_SLIDE));
+    return strophes.flatMap((s) => splitStropheIntoSlides(String(s), MAX_WORDS_PER_SLIDE));
+  }
 
+  /** Récupère les paroles d'une page et ajoute le chant correspondant. */
+  async function importSongFromUrl(titre, lien, statusEl) {
+    const paroles = await fetchParolesFromUrl(lien, statusEl);
     window.RegieChantsControl.addSong({ titre, paroles });
     setStatus(statusEl, "Chant ajouté.", "success");
   }
@@ -410,4 +416,33 @@
       els.jemafResults.classList.remove("jemaf-results--busy");
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Complétion automatique du chant JEMAF par défaut, au premier lancement */
+  /* ---------------------------------------------------------------------- */
+
+  const AUTO_IMPORT_FLAG_KEY = "regieChants.jemafDefaultImported.v1";
+
+  async function bootstrapDefaultJemafSong() {
+    if (localStorage.getItem(AUTO_IMPORT_FLAG_KEY)) return;
+
+    const current = loadSongs().find((s) => s.titre === JEMAF_DEFAULT_SONG_TITLE);
+    const isPlaceholder = current && current.paroles.length === 1 && current.paroles[0] === JEMAF_PLACEHOLDER_TEXT;
+    if (!isPlaceholder) return; // déjà rempli, ou supprimé par l'utilisateur
+
+    const entry = JEMAF_INDEX.find((e) => stripJemafReference(e.titre) === JEMAF_DEFAULT_SONG_TITLE);
+    if (!entry) return;
+
+    try {
+      const paroles = await fetchParolesFromUrl(entry.lien, null);
+      const updated = window.RegieChantsControl.updateSongParoles(JEMAF_DEFAULT_SONG_TITLE, paroles);
+      if (updated) localStorage.setItem(AUTO_IMPORT_FLAG_KEY, "1");
+    } catch (err) {
+      // Silencieux : le chant garde son texte d'attente et pourra être
+      // réessayé au prochain chargement, ou importé à la main depuis l'onglet JEMAF.
+      console.error("Import automatique du chant par défaut impossible :", err);
+    }
+  }
+
+  bootstrapDefaultJemafSong();
 })();

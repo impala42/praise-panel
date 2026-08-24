@@ -420,5 +420,19 @@
       renderSongList();
       selectSong(songs.length - 1);
     },
+
+    /** Remplace les paroles d'un chant existant (retrouvé par titre exact),
+     *  sans changer sa position ni forcer sa sélection. Utilisé pour
+     *  compléter en tâche de fond le chant JEMAF par défaut. Renvoie
+     *  true si le chant a été trouvé et mis à jour. */
+    updateSongParoles(titre, paroles) {
+      const song = songs.find((s) => s.titre === titre);
+      if (!song) return false;
+      song.paroles = paroles;
+      saveSongs(songs);
+      renderSongList();
+      if (selectedSongIndex !== -1 && songs[selectedSongIndex] === song) renderSlides();
+      return true;
+    },
   };
 })();
