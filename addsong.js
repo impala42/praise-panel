@@ -385,6 +385,13 @@
   });
   renderJemafResults();
 
+  /** Retire le préfixe de référence ("JEM324 - ", "ATG020 - ", …) du titre
+   *  affiché dans l'index, pour ne garder que le nom du chant. */
+  function stripJemafReference(titre) {
+    const withoutRef = titre.replace(/^\S+\s*-\s*/, "").trim();
+    return withoutRef || titre;
+  }
+
   async function selectJemafSong(index) {
     if (jemafBusy) return;
     const entry = JEMAF_INDEX[index];
@@ -393,7 +400,7 @@
     jemafBusy = true;
     els.jemafResults.classList.add("jemaf-results--busy");
     try {
-      await importSongFromUrl(entry.titre, entry.lien, els.jemafStatus);
+      await importSongFromUrl(stripJemafReference(entry.titre), entry.lien, els.jemafStatus);
       closeModal();
     } catch (err) {
       console.error(err);
