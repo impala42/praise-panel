@@ -1,6 +1,4 @@
 # A faire
-- supprimer chant
-- déplacer chant + supprimer inversion
 - chants à partir de jemaf
 - police projection
 

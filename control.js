@@ -20,7 +20,6 @@
     songList:          document.getElementById("songList"),
     songSearch:        document.getElementById("songSearch"),
     addSongBtn:        document.getElementById("addSongBtn"),
-    reverseOrderBtn:   document.getElementById("reverseOrderBtn"),
     slidesArea:        document.getElementById("slidesArea"),
     openProjectionBtn: document.getElementById("openProjectionBtn"),
     blackoutBtn:       document.getElementById("blackoutBtn"),
@@ -43,7 +42,7 @@
 
     if (songs.length === 0) {
       els.songList.innerHTML =
-        `<p class="empty-note">Aucun chant pour l'instant.<br>L'ajout de chants arrive prochainement.</p>`;
+        `<p class="empty-note">Aucun chant pour l'instant.<br>Utilisez le bouton + pour en ajouter.</p>`;
       return;
     }
 
@@ -54,15 +53,34 @@
 
     els.songList.innerHTML = "";
     visible.forEach(({ song, index }) => {
-      const btn = document.createElement("button");
-      btn.className = "song-item" + (index === selectedSongIndex ? " is-selected" : "");
-      btn.innerHTML = `
-        <span class="song-item__index">${String(index + 1).padStart(2, "0")}</span>
-        <span class="song-item__title">${escapeHtml(song.titre)}</span>
-        <span class="song-item__count">${song.paroles.length}</span>
+      const row = document.createElement("div");
+      row.className = "song-item" + (index === selectedSongIndex ? " is-selected" : "");
+      row.innerHTML = `
+        <button class="song-item__select" data-select="${index}">
+          <span class="song-item__index">${String(index + 1).padStart(2, "0")}</span>
+          <span class="song-item__title">${escapeHtml(song.titre)}</span>
+          <span class="song-item__count">${song.paroles.length}</span>
+        </button>
+        <span class="song-item__actions">
+          <button class="song-item__action" data-move-up="${index}" title="Monter" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button class="song-item__action" data-move-down="${index}" title="Descendre" ${index === songs.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="song-item__action song-item__action--danger" data-delete="${index}" title="Supprimer ce chant">×</button>
+        </span>
       `;
-      btn.addEventListener("click", () => selectSong(index));
-      els.songList.appendChild(btn);
+      els.songList.appendChild(row);
+    });
+
+    els.songList.querySelectorAll("[data-select]").forEach((btn) => {
+      btn.addEventListener("click", () => selectSong(Number(btn.dataset.select)));
+    });
+    els.songList.querySelectorAll("[data-move-up]").forEach((btn) => {
+      btn.addEventListener("click", () => moveSong(Number(btn.dataset.moveUp), -1));
+    });
+    els.songList.querySelectorAll("[data-move-down]").forEach((btn) => {
+      btn.addEventListener("click", () => moveSong(Number(btn.dataset.moveDown), 1));
+    });
+    els.songList.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => deleteSong(Number(btn.dataset.delete)));
     });
   }
 
@@ -73,19 +91,56 @@
     renderSlides();
   }
 
-  /** Inverse l'ordre des chants dans la liste de gauche, en conservant
-   *  la sélection et l'état projeté (qui restent liés au même chant). */
-  function reverseSongOrder() {
-    const selectedSong = songs[selectedSongIndex] || null;
-    const liveSong = songs[liveSongIndex] || null;
+  /** Déplace un chant d'un cran vers le haut (-1) ou le bas (+1), en
+   *  conservant la sélection et l'éventuelle projection sur le même chant. */
+  function moveSong(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= songs.length) return;
 
-    songs = songs.slice().reverse();
+    [songs[index], songs[target]] = [songs[target], songs[index]];
     saveSongs(songs);
 
-    selectedSongIndex = selectedSong ? songs.indexOf(selectedSong) : -1;
-    liveSongIndex = liveSong ? songs.indexOf(liveSong) : -1;
+    if (selectedSongIndex === index) selectedSongIndex = target;
+    else if (selectedSongIndex === target) selectedSongIndex = index;
+
+    if (liveSongIndex === index) liveSongIndex = target;
+    else if (liveSongIndex === target) liveSongIndex = index;
 
     renderSongList();
+  }
+
+  /** Supprime un chant après confirmation. Coupe la projection s'il était
+   *  en direct, et vide le panneau de droite s'il était ouvert. */
+  function deleteSong(index) {
+    const song = songs[index];
+    if (!song) return;
+
+    const confirmed = window.confirm(`Supprimer « ${song.titre} » ? Cette action est irréversible.`);
+    if (!confirmed) return;
+
+    const wasLive = liveSongIndex === index;
+    songs.splice(index, 1);
+    saveSongs(songs);
+
+    if (wasLive) {
+      liveSongIndex = -1;
+      liveSlideIndex = -1;
+      saveCurrent(null);
+      channel.postMessage({ type: "blackout" });
+      updateLivePreview(null);
+    } else if (liveSongIndex > index) {
+      liveSongIndex -= 1;
+    }
+
+    if (selectedSongIndex === index) {
+      selectedSongIndex = -1;
+      editMode = false;
+    } else if (selectedSongIndex > index) {
+      selectedSongIndex -= 1;
+    }
+
+    renderSongList();
+    renderSlides();
   }
 
   /* ---------------------------------------------------------------------- */
@@ -306,7 +361,6 @@
   });
 
   els.blackoutBtn.addEventListener("click", blackout);
-  els.reverseOrderBtn.addEventListener("click", reverseSongOrder);
 
   els.openProjectionBtn.addEventListener("click", () => {
     window.open("projection.html", "regie-chants-projection", "width=1280,height=720");

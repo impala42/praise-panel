@@ -308,18 +308,11 @@ button {
 
 .song-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
+  align-items: stretch;
+  gap: 2px;
   border-left: 2px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 9px 10px;
   margin-bottom: 2px;
-  color: var(--text);
-  transition: background .12s ease, border-color .12s ease;
 }
 
 .song-item:hover { background: var(--panel-alt); }
@@ -327,6 +320,20 @@ button {
 .song-item.is-selected {
   background: var(--teal-dim);
   border-left-color: var(--teal);
+}
+
+.song-item__select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 9px 6px 9px 10px;
+  color: var(--text);
 }
 
 .song-item__index {
@@ -353,6 +360,33 @@ button {
   color: var(--text-faint);
   flex: none;
 }
+
+.song-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding-right: 6px;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.song-item:hover .song-item__actions,
+.song-item:focus-within .song-item__actions { opacity: 1; }
+
+.song-item__action {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  transition: color .15s ease, background .15s ease;
+}
+.song-item__action:hover:not(:disabled) { color: var(--teal); background: var(--raised); }
+.song-item__action:disabled { opacity: 0.3; cursor: not-allowed; }
+.song-item__action--danger:hover:not(:disabled) { color: var(--danger); }
 
 .empty-note {
   padding: 24px 16px;
