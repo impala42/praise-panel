@@ -1,1 +1,3 @@
-# A faire
+# PraisePanel
+
+Application simple pour projeter des chants
