@@ -279,6 +279,23 @@ button {
 .icon-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+.icon-btn--primary {
+  width: 30px;
+  height: 30px;
+  font-size: 19px;
+  font-weight: 600;
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #0A2320;
+  box-shadow: 0 0 0 4px var(--teal-dim);
+}
+.icon-btn--primary:hover:not(:disabled) {
+  background: #5cd6c6;
+  border-color: #5cd6c6;
+  color: #0A2320;
+  box-shadow: 0 0 0 5px var(--teal-dim);
+}
+
 .panel__header-actions { display: flex; align-items: center; gap: 6px; }
 
 .search {
