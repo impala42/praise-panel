@@ -161,8 +161,9 @@
       const reference = verseStart === lastVerse
         ? `${book.name} ${chapter}:${verseStart}`
         : `${book.name} ${chapter}:${verseStart}-${lastVerse}`;
+      const textWithReference = text + "\n" + reference;
 
-      window.RegieChantsControl.addSong({ titre: reference, paroles: [text] });
+      window.RegieChantsControl.addSong({ titre: reference, paroles: [textWithReference] });
       setStatus(els.bibleStatus, "Passage ajouté.", "success");
       closeModal();
       els.bibleForm.reset();

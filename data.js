@@ -21,7 +21,7 @@ const SEED_SONGS = [
   },
   {
     titre: "Psaumes 150:6",
-    paroles: ["Que tout ce qui respire loue l'Éternel !\nLouez l'Éternel !"]
+    paroles: ["Que tout ce qui respire loue l'Éternel !\nLouez l'Éternel !\nPsaumes 150:6"]
   }
 ];
 
