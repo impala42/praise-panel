@@ -168,7 +168,11 @@
           <div class="slide-card slide-card--edit${isLive ? " is-live" : ""}" data-slide="${i}">
             <span class="slide-card__top">
               <span class="slide-card__num">DIAPO ${String(i + 1).padStart(2, "0")}</span>
-              <button class="slide-card__delete" data-delete="${i}" title="Supprimer cette diapositive">×</button>
+              <span class="slide-card__tools">
+                <button class="slide-card__tool" data-move-up="${i}" title="Monter" ${i === 0 ? "disabled" : ""}>↑</button>
+                <button class="slide-card__tool" data-move-down="${i}" title="Descendre" ${i === song.paroles.length - 1 ? "disabled" : ""}>↓</button>
+                <button class="slide-card__tool slide-card__tool--danger" data-delete="${i}" title="Supprimer cette diapositive">×</button>
+              </span>
             </span>
             <textarea class="slide-card__textarea" data-edit="${i}" rows="4">${escapeHtml(text)}</textarea>
           </div>`;
@@ -221,7 +225,13 @@
         });
       });
 
-      els.slidesArea.querySelectorAll(".slide-card__delete").forEach((btn) => {
+      els.slidesArea.querySelectorAll(".slide-card__tool[data-move-up]").forEach((btn) => {
+        btn.addEventListener("click", () => moveSlide(Number(btn.dataset.moveUp), -1));
+      });
+      els.slidesArea.querySelectorAll(".slide-card__tool[data-move-down]").forEach((btn) => {
+        btn.addEventListener("click", () => moveSlide(Number(btn.dataset.moveDown), 1));
+      });
+      els.slidesArea.querySelectorAll(".slide-card__tool--danger").forEach((btn) => {
         btn.addEventListener("click", () => deleteSlide(Number(btn.dataset.delete)));
       });
     } else {
@@ -278,6 +288,39 @@
       newTextarea.focus();
       newTextarea.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
+  }
+
+  /** Échange une diapositive avec sa voisine immédiate (-1 : monte, +1 : descend).
+   *  Met à jour la diapositive en direct si elle est concernée par le déplacement. */
+  function moveSlide(index, direction) {
+    const song = songs[selectedSongIndex];
+    if (!song) return;
+    const target = index + direction;
+    if (target < 0 || target >= song.paroles.length) return;
+
+    window.clearTimeout(saveTimers[index]);
+    window.clearTimeout(saveTimers[target]);
+
+    const liveWasInvolved = selectedSongIndex === liveSongIndex &&
+      (liveSlideIndex === index || liveSlideIndex === target);
+
+    [song.paroles[index], song.paroles[target]] = [song.paroles[target], song.paroles[index]];
+    saveSongs(songs);
+
+    if (liveWasInvolved) {
+      liveSlideIndex = liveSlideIndex === index ? target : index;
+      const state = {
+        titre: song.titre,
+        slideIndex: liveSlideIndex,
+        slideCount: song.paroles.length,
+        text: song.paroles[liveSlideIndex],
+      };
+      saveCurrent(state);
+      channel.postMessage({ type: "show", state, silent: true });
+      updateLivePreview(state);
+    }
+
+    renderSlides();
   }
 
   function deleteSlide(slideIndex) {

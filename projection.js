@@ -29,12 +29,16 @@
 
     const key = state.titre + "::" + state.slideIndex;
 
-    // Correction de texte sur la diapositive déjà à l'écran : on remplace
-    // le texte sans coupure, plutôt que de refaire un fondu complet.
-    if (silent && key === currentKey) {
+    // Mise à jour silencieuse (correction de texte, ou réordonnancement des
+    // diapositives) : on remplace le texte sans fondu, plutôt que de refaire
+    // une transition complète pour un contenu que l'assemblée voit déjà.
+    if (silent) {
+      currentKey = key;
       lyricsEl.textContent = state.text;
       metaEl.textContent = `${state.titre} · ${state.slideIndex + 1}/${state.slideCount}`;
+      stage.classList.remove("is-empty");
       fitText();
+      lyricsEl.classList.add("is-visible");
       return;
     }
 

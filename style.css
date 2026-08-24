@@ -520,18 +520,27 @@ button {
 .slide-card--edit:hover { transform: none; border-color: var(--line); }
 .slide-card--edit.is-live:hover { border-color: var(--amber); }
 
-.slide-card__delete {
+.slide-card__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.slide-card__tool {
   border: none;
   background: transparent;
   color: var(--text-faint);
-  font-size: 16px;
+  font-size: 12px;
   line-height: 1;
   width: 20px;
   height: 20px;
   border-radius: 4px;
   transition: color .15s ease, background .15s ease;
 }
-.slide-card__delete:hover { color: var(--danger); background: rgba(232, 96, 76, 0.12); }
+.slide-card__tool:hover:not(:disabled) { color: var(--teal); background: var(--raised); }
+.slide-card__tool:disabled { opacity: 0.3; cursor: not-allowed; }
+.slide-card__tool--danger { font-size: 16px; }
+.slide-card__tool--danger:hover:not(:disabled) { color: var(--danger); background: rgba(232, 96, 76, 0.12); }
 
 .slide-card__textarea {
   width: 100%;

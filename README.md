@@ -1,5 +1,4 @@
 # A faire
 
-# A faire + tard 
 - enlever bouton quitter plein écran
-- changer ordre diapo
+- mettre l'accent sur le bouton +
