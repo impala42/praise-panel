@@ -86,35 +86,6 @@
     return div.textContent.replace(/\s+/g, " ").trim();
   }
 
-  /** Découpe une strophe de plus de `maxWords` mots en plusieurs diapositives,
-   *  en coupant de préférence après un signe de ponctuation (. ! ? ; : , …)
-   *  plutôt qu'au milieu d'une phrase. À défaut de ponctuation dans la
-   *  fenêtre de mots autorisée, coupe simplement au mot le plus proche. */
-  function splitLongStrophe(text, maxWords) {
-    const words = text.trim().split(/\s+/).filter(Boolean);
-    if (words.length <= maxWords) return [text.trim()];
-
-    const endsWithPunctuation = /[.!?;:,…]["'”’)\]]?$/;
-    const slides = [];
-    let start = 0;
-
-    while (words.length - start > maxWords) {
-      const windowEnd = start + maxWords;
-      let breakAt = -1;
-      for (let i = windowEnd - 1; i > start; i--) {
-        if (endsWithPunctuation.test(words[i])) {
-          breakAt = i + 1; // on coupe juste après ce mot
-          break;
-        }
-      }
-      if (breakAt === -1) breakAt = windowEnd; // aucune ponctuation trouvée : coupe brute
-      slides.push(words.slice(start, breakAt).join(" "));
-      start = breakAt;
-    }
-    if (start < words.length) slides.push(words.slice(start).join(" "));
-    return slides;
-  }
-
   /* ---------------------------------------------------------------------- */
   /* Onglet « passage biblique » — API bolls.life (sans clé)                */
   /* ---------------------------------------------------------------------- */
@@ -188,6 +159,76 @@
   });
 
   /* ---------------------------------------------------------------------- */
+  /* Découpage des strophes trop longues (import URL uniquement)            */
+  /* ---------------------------------------------------------------------- */
+
+  const MAX_WORDS_PER_SLIDE = 20;
+
+  function wordCount(str) {
+    return (str.match(/\S+/g) || []).length;
+  }
+
+  /** Découpe un bloc de texte trop long en diapositives, en priorité sur
+   *  les retours à la ligne, puis sur la ponctuation de fin de phrase,
+   *  et en dernier recours par nombre de mots. */
+  function splitStropheIntoSlides(text, maxWords) {
+    const trimmed = text.trim();
+    if (wordCount(trimmed) <= maxWords) return [trimmed];
+
+    const lines = trimmed.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (lines.length > 1) return groupIntoChunks(lines, "\n", maxWords);
+
+    const sentences = trimmed
+      .split(/(?<=[.!?;])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (sentences.length > 1) return groupIntoChunks(sentences, " ", maxWords);
+
+    // Dernier recours : aucune ligne ni ponctuation exploitable, on tranche
+    // simplement par paquets de mots.
+    const words = trimmed.match(/\S+/g) || [];
+    const out = [];
+    for (let i = 0; i < words.length; i += maxWords) {
+      out.push(words.slice(i, i + maxWords).join(" "));
+    }
+    return out;
+  }
+
+  /** Regroupe des fragments (lignes ou phrases) en diapositives d'au plus
+   *  `maxWords` mots, sans jamais couper un fragment qui tient seul ;
+   *  un fragment lui-même trop long est redécoupé récursivement. */
+  function groupIntoChunks(pieces, joiner, maxWords) {
+    const slides = [];
+    let current = [];
+    let currentWords = 0;
+
+    function flush() {
+      if (current.length) {
+        slides.push(current.join(joiner));
+        current = [];
+        currentWords = 0;
+      }
+    }
+
+    pieces.forEach((piece) => {
+      const pieceWords = wordCount(piece);
+
+      if (pieceWords > maxWords) {
+        flush();
+        slides.push(...splitStropheIntoSlides(piece, maxWords));
+        return;
+      }
+
+      if (current.length > 0 && currentWords + pieceWords > maxWords) flush();
+      current.push(piece);
+      currentWords += pieceWords;
+    });
+    flush();
+
+    return slides;
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* Onglet « URL » — lecture de page (Jina Reader) + extraction par IA     */
   /* ---------------------------------------------------------------------- */
 
@@ -250,9 +291,9 @@
         throw new Error("Aucune parole détectée sur cette page.");
       }
 
-      // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives,
-      // en coupant sur la ponctuation quand c'est possible.
-      const paroles = strophes.flatMap((s) => splitStropheIntoSlides(s, 20));
+      // Les strophes de plus de 20 mots sont réparties sur plusieurs diapositives :
+      // en priorité sur les retours à la ligne, puis sur la ponctuation, puis par mots.
+      const paroles = strophes.flatMap((s) => splitStropheIntoSlides(String(s), MAX_WORDS_PER_SLIDE));
 
       window.RegieChantsControl.addSong({ titre, paroles });
       setStatus(els.urlStatus, "Chant ajouté.", "success");
