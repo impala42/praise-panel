@@ -1,5 +1,4 @@
 # A faire
-- police projection
 
 # A faire + tard 
 - sauvegarde ferme onglet ?
